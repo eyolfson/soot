@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
 
 import soot.ClassSource;
 import soot.FoundFile;
@@ -63,7 +64,8 @@ class AsmClassSource extends ClassSource {
     try {
       d = foundFile.inputStream();
       ClassReader clsr = new ClassReader(d);
-      SootClassBuilder scb = new SootClassBuilder(sc);
+      ClassWriter classWriter = new ClassWriter(0);
+      SootClassBuilder scb = new SootClassBuilder(sc, classWriter);
       clsr.accept(scb, ClassReader.SKIP_FRAMES);
       Dependencies deps = new Dependencies();
       deps.typesToSignature.addAll(scb.deps);

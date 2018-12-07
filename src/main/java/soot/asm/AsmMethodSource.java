@@ -274,11 +274,13 @@ import soot.jimple.NewMultiArrayExpr;
 import soot.jimple.NopStmt;
 import soot.jimple.NullConstant;
 import soot.jimple.ReturnStmt;
+import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
 import soot.jimple.TableSwitchStmt;
 import soot.jimple.ThrowStmt;
 import soot.jimple.UnopExpr;
 import soot.options.Options;
+import soot.tagkit.BytecodeOffsetTag;
 import soot.tagkit.LineNumberTag;
 import soot.tagkit.Tag;
 import soot.util.Chain;
@@ -302,22 +304,26 @@ final class AsmMethodSource implements MethodSource {
   private Multimap<LabelNode, UnitBox> trapHandlers;
   private JimpleBody body;
   private int lastLineNumber = -1;
+  private HashMap<InvokeExpr, Integer> invokeExprOffsetLookup = new HashMap<InvokeExpr, Integer>();
   /* -const fields- */
   private final int maxLocals;
   private final InsnList instructions;
   private final List<LocalVariableNode> localVars;
   private final List<TryCatchBlockNode> tryCatchBlocks;
+  private final HashMap<AbstractInsnNode, Integer> insnOffsetLookup;
 
   private final Set<LabelNode> inlineExceptionLabels = new HashSet<LabelNode>();
   private final Map<LabelNode, Unit> inlineExceptionHandlers = new HashMap<LabelNode, Unit>();
 
   private final CastAndReturnInliner castAndReturnInliner = new CastAndReturnInliner();
 
-  AsmMethodSource(int maxLocals, InsnList insns, List<LocalVariableNode> localVars, List<TryCatchBlockNode> tryCatchBlocks) {
+  AsmMethodSource(int maxLocals, InsnList insns, List<LocalVariableNode> localVars,
+		  List<TryCatchBlockNode> tryCatchBlocks, HashMap<AbstractInsnNode, Integer> insnOffsetLookup) {
     this.maxLocals = maxLocals;
     this.instructions = insns;
     this.localVars = localVars;
     this.tryCatchBlocks = tryCatchBlocks;
+    this.insnOffsetLookup = insnOffsetLookup;
   }
 
   private StackFrame getFrame(AbstractInsnNode insn) {
@@ -478,6 +484,16 @@ final class AsmMethodSource implements MethodSource {
         u.addTag(lineTag);
       } else if (((LineNumberTag) lineTag).getLineNumber() != lastLineNumber) {
         throw new RuntimeException("Line tag mismatch");
+      }
+    }
+
+    if (Options.v().keep_offset()) {
+      Stmt stmt = (Stmt) u;
+      if (stmt.containsInvokeExpr()) {
+	InvokeExpr invokeExpr = stmt.getInvokeExpr();
+	if (invokeExprOffsetLookup.containsKey(invokeExpr)) {
+	  u.addTag(new BytecodeOffsetTag(invokeExprOffsetLookup.get(invokeExpr)));
+	}
       }
     }
 
@@ -1311,6 +1327,9 @@ final class AsmMethodSource implements MethodSource {
           iinvoke = Jimple.v().newSpecialInvokeExpr(base, ref, argList);
         } else if (op == INVOKEVIRTUAL) {
           iinvoke = Jimple.v().newVirtualInvokeExpr(base, ref, argList);
+          if (Options.v().keep_offset() && insnOffsetLookup.containsKey(insn)) {
+            invokeExprOffsetLookup.put(iinvoke, insnOffsetLookup.get(insn));
+          }
         } else if (op == INVOKEINTERFACE) {
           iinvoke = Jimple.v().newInterfaceInvokeExpr(base, ref, argList);
         } else {

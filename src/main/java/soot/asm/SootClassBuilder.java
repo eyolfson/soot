@@ -71,8 +71,8 @@ class SootClassBuilder extends ClassVisitor {
    * @param klass
    *          Soot class to build.
    */
-  SootClassBuilder(SootClass klass) {
-    super(Opcodes.ASM5);
+  SootClassBuilder(SootClass klass, ClassVisitor cv) {
+    super(Opcodes.ASM5, cv);
     this.klass = klass;
     this.deps = new HashSet();
   }
@@ -155,6 +155,9 @@ class SootClassBuilder extends ClassVisitor {
 
   @Override
   public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+    MethodVisitor methodVisitor = super.visitMethod(access, name, desc,
+						    signature, exceptions);
+
     List<SootClass> thrownExceptions;
     if (exceptions == null || exceptions.length == 0) {
       thrownExceptions = Collections.emptyList();
@@ -177,7 +180,7 @@ class SootClassBuilder extends ClassVisitor {
       method.addTag(new SignatureTag(signature));
     }
     method = klass.getOrAddMethod(method);
-    return new MethodBuilder(method, this, desc, exceptions);
+    return new MethodBuilder(method, this, desc, exceptions, methodVisitor);
   }
 
   @Override
