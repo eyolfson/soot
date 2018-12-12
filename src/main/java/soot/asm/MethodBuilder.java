@@ -21,7 +21,6 @@ package soot.asm;
  * <http://www.gnu.org/licenses/lgpl-2.1.html>.
  * #L%
  */
-
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Attribute;
 import org.objectweb.asm.Handle;
@@ -59,12 +58,14 @@ class MethodBuilder extends MethodNode implements Opcodes {
   private final SootClassBuilder scb;
   private MethodVisitor mv;
   private HashMap<AbstractInsnNode, Integer> offsetLookup = new HashMap<AbstractInsnNode, Integer>();
+  private int ldcStringCount;
 
   MethodBuilder(SootMethod method, SootClassBuilder scb, String desc, String[] ex, MethodVisitor mv) {
     super(Opcodes.ASM5, method.getModifiers(), method.getName(), desc, null, ex);
     this.method = method;
     this.scb = scb;
     this.mv = mv;
+    ldcStringCount = 0;
   }
 
   private TagBuilder getTagBuilder() {
@@ -92,6 +93,7 @@ class MethodBuilder extends MethodNode implements Opcodes {
 
   @Override
   public void visitAttribute(Attribute attr) {
+    mv.visitAttribute(attr);
     getTagBuilder().visitAttribute(attr);
   }
 
@@ -157,12 +159,6 @@ class MethodBuilder extends MethodNode implements Opcodes {
   }
 
   @Override
-  public void visitLabel(Label label) {
-    super.visitLabel(label);
-    mv.visitLabel(label);
-  }
-
-  @Override
   public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean isInterf) {
     super.visitMethodInsn(opcode, owner, name, desc, isInterf);
 
@@ -170,7 +166,7 @@ class MethodBuilder extends MethodNode implements Opcodes {
       AbstractInsnNode offsetKey = instructions.getLast();
       Label here = new Label();
       visitLabel(here);
-      offsetLookup.put(offsetKey, new Integer(here.getOffset()));
+      offsetLookup.put(offsetKey, new Integer(here.getOffset() - ldcStringCount));
     }
     mv.visitMethodInsn(opcode, owner, name, desc, isInterf);
 
@@ -189,6 +185,10 @@ class MethodBuilder extends MethodNode implements Opcodes {
     if (cst instanceof Handle) {
       Handle methodHandle = (Handle) cst;
       scb.addDep(AsmUtil.toBaseType(methodHandle.getOwner()));
+    }
+
+    if (cst instanceof String) {
+      ++ldcStringCount;
     }
   }
 
@@ -271,6 +271,12 @@ class MethodBuilder extends MethodNode implements Opcodes {
   }
 
   @Override
+  public void visitLabel(Label label) {
+    super.visitLabel(label);
+    mv.visitLabel(label);
+  }
+
+  @Override
   public void visitLineNumber(int line, Label start) {
     super.visitLineNumber(line, start);
     mv.visitLineNumber(line, start);
@@ -286,6 +292,12 @@ class MethodBuilder extends MethodNode implements Opcodes {
   public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
     super.visitLookupSwitchInsn(dflt, keys, labels);
     mv.visitLookupSwitchInsn(dflt, keys, labels);
+  }
+
+  @Override
+  public void visitMaxs(int maxStack, int maxLocals) {
+    super.visitMaxs(maxStack, maxLocals);
+    mv.visitMaxs(maxStack, maxLocals);
   }
 
   @Override
