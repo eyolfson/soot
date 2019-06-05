@@ -38,9 +38,9 @@ import soot.javaToJimple.IInitialResolver.Dependencies;
  * 
  * @author Aaloan Miftah
  */
-class AsmClassSource extends ClassSource {
+public class AsmClassSource extends ClassSource {
 
-  private FoundFile foundFile;
+  protected FoundFile foundFile;
 
   /**
    * Constructs a new ASM class source.
@@ -50,7 +50,7 @@ class AsmClassSource extends ClassSource {
    * @param data
    *          stream containing data for class.
    */
-  AsmClassSource(String cls, FoundFile foundFile) {
+  protected AsmClassSource(String cls, FoundFile foundFile) {
     super(cls);
     if (foundFile == null) {
       throw new IllegalStateException("Error: The FoundFile must not be null.");
